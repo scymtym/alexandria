@@ -50,6 +50,16 @@ which is only sent to WITH-OPEN-FILE when it's not NIL."
   `(with-open-file* (,stream-name ,file-name :direction :output ,@args)
      ,@body))
 
+(defun read-stream-content-into-string (stream &key (buffer-size 4096))
+  "Return the \"contents\" of STREAM as a fresh string."
+  (let ((*print-pretty* nil))
+    (with-output-to-string (datum)
+      (let ((buffer (make-array buffer-size :element-type 'character)))
+        (loop
+          :for bytes-read = (read-sequence buffer stream)
+          :do (write-sequence buffer datum :start 0 :end bytes-read)
+          :while (= bytes-read buffer-size))))))
+
 (defun read-file-into-string (pathname &key (buffer-size 4096) external-format)
   "Return the contents of the file denoted by PATHNAME as a fresh string.
 
@@ -57,13 +67,7 @@ The EXTERNAL-FORMAT parameter will be passed directly to WITH-OPEN-FILE
 unless it's NIL, which means the system default."
   (with-input-from-file
       (file-stream pathname :external-format external-format)
-    (let ((*print-pretty* nil))
-      (with-output-to-string (datum)
-        (let ((buffer (make-array buffer-size :element-type 'character)))
-	  (loop
-	     :for bytes-read = (read-sequence buffer file-stream)
-	     :do (write-sequence buffer datum :start 0 :end bytes-read)
-	     :while (= bytes-read buffer-size)))))))
+    (read-stream-content-into-string file-stream :buffer-size buffer-size)))
 
 (defun write-string-into-file (string pathname &key (if-exists :error)
                                                     if-does-not-exist
@@ -77,14 +81,30 @@ unless it's NIL, which means the system default."
                                     :external-format external-format)
     (write-sequence string file-stream)))
 
+(defun read-stream-content-into-byte-vector (stream &key length (initial-size 4096))
+  "Return \"contents\" of STREAM as freshly allocated (unsigned-byte 8) vector."
+  (check-type length (or null non-negative-integer))
+  (do ((buffer (make-array (or length initial-size)
+                           :element-type '(unsigned-byte 8)))
+       (offset 0)
+       (offset-wanted 0))
+      ((or (/= offset-wanted offset)
+           (and length (>= offset length)))
+       (if (= offset (length buffer))
+           buffer
+           (subseq buffer 0 offset)))
+    (unless (zerop offset)
+      (let ((new-buffer (make-array (* 2 (length buffer))
+                                    :element-type '(unsigned-byte 8))))
+        (replace new-buffer buffer)
+        (setf buffer new-buffer)))
+    (setf offset-wanted (length buffer)
+          offset (read-sequence buffer stream :start offset))))
+
 (defun read-file-into-byte-vector (pathname)
   "Read PATHNAME into a freshly allocated (unsigned-byte 8) vector."
   (with-input-from-file (stream pathname :element-type '(unsigned-byte 8))
-    (let ((length (file-length stream)))
-      (assert length)
-      (let ((result (make-array length :element-type '(unsigned-byte 8))))
-        (read-sequence result stream)
-        result))))
+    (read-stream-content-into-byte-vector stream :length (file-length stream))))
 
 (defun write-byte-vector-into-file (bytes pathname &key (if-exists :error)
                                                        if-does-not-exist)
