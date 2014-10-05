@@ -2,3 +2,15 @@
 *~
 \#*
 *.patch
+/doc/*.aux
+/doc/*.cp
+/doc/*.fn
+/doc/*.ky
+/doc/*.log
+/doc/*.pg
+/doc/*.toc
+/doc/*.tp
+/doc/*.vr
+/doc/*.html
+/doc/*.info
+/doc/*.pdf
