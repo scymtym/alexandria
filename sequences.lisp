@@ -155,12 +155,20 @@ that are not lists."
   `(or proper-list
        (and (not list) sequence)))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (when (find-symbol (string '#:emptyp) '#:sb-sequence)
+    (pushnew 'sbcl-sequence-emptyp *features*)))
+
+#-alexandria::sbcl-sequence-emptyp
 (defun emptyp (sequence)
   "Returns true if SEQUENCE is an empty sequence. Signals an error if SEQUENCE
 is not a sequence."
   (etypecase sequence
     (list (null sequence))
     (sequence (zerop (length sequence)))))
+
+#+alexandria::sbcl-sequence-emptyp
+(setf (symbol-function 'emptyp) (symbol-function 'sb-sequence:emptyp))
 
 (defun length= (&rest sequences)
   "Takes any number of sequences or integers in any order. Returns true iff
