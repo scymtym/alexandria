@@ -4,7 +4,9 @@
 (in-package :alexandria)
 
 (defmacro with-open-file* ((stream filespec &key direction element-type
-                                   if-exists if-does-not-exist external-format)
+                                   if-exists
+				   (if-does-not-exist nil if-does-not-exist-supplied-p)
+				   external-format)
                            &body body)
   "Just like WITH-OPEN-FILE, but NIL values in the keyword arguments mean to use
 the default value specified for OPEN."
@@ -18,7 +20,7 @@ the default value specified for OPEN."
                             (list :element-type ,element-type))
                           (when ,if-exists
                             (list :if-exists ,if-exists))
-                          (when ,if-does-not-exist
+                          (when ,if-does-not-exist-supplied-p
                             (list :if-does-not-exist ,if-does-not-exist))
                           (when ,external-format
                             (list :external-format ,external-format)))))
@@ -107,7 +109,7 @@ unless it's NIL, which means the system default."
     (read-stream-content-into-byte-vector stream :length (file-length stream))))
 
 (defun write-byte-vector-into-file (bytes pathname &key (if-exists :error)
-                                                       if-does-not-exist)
+                                                        if-does-not-exist)
   "Write BYTES to PATHNAME."
   (check-type bytes (vector (unsigned-byte 8)))
   (with-output-to-file (stream pathname :if-exists if-exists
@@ -116,10 +118,10 @@ unless it's NIL, which means the system default."
     (write-sequence bytes stream)))
 
 (defun copy-file (from to &key (if-to-exists :supersede)
-			       (element-type '(unsigned-byte 8)) finish-output)
+                               (element-type '(unsigned-byte 8)) finish-output)
   (with-input-from-file (input from :element-type element-type)
     (with-output-to-file (output to :element-type element-type
-				    :if-exists if-to-exists)
+                                    :if-exists if-to-exists)
       (copy-stream input output
                    :element-type element-type
                    :finish-output finish-output))))
