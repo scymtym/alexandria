@@ -296,19 +296,18 @@ displaced array pointing to the sequence after PREFIX."
   (let ((sequence-length (length sequence))
         (prefix-length (length prefix)))
     (if (<= prefix-length sequence-length)
-        (let ((mismatch (apply #'mismatch prefix sequence args)))
-          (if mismatch
-              (if (< mismatch prefix-length)
-                  (values nil nil)
-                  (values t (when return-suffix
-                              (make-array (- sequence-length mismatch)
-                                          :element-type (array-element-type sequence)
-                                          :displaced-to sequence
-                                          :displaced-index-offset prefix-length
-                                          :adjustable nil))))
+        (if-let ((mismatch (apply #'mismatch prefix sequence args)))
+          (if (< mismatch prefix-length)
+              (values nil nil)
               (values t (when return-suffix
-                          (make-array 0 :element-type (array-element-type sequence)
-                                      :adjustable nil)))))
+                          (make-array (- sequence-length mismatch)
+                                      :element-type (array-element-type sequence)
+                                      :displaced-to sequence
+                                      :displaced-index-offset prefix-length
+                                      :adjustable nil))))
+          (values t (when return-suffix
+                      (make-array 0 :element-type (array-element-type sequence)
+                                    :adjustable nil))))
         (values nil nil))))
 
 (defun ends-with-subseq (suffix sequence &key (test #'eql))
